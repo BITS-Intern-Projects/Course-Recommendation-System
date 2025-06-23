@@ -53,7 +53,7 @@ The frontend will be available at http://localhost:3000
    OR
    ```bash
    conda create venv
-   conda activate
+   conda activate venv
    ```
 
 4. Install dependencies:
