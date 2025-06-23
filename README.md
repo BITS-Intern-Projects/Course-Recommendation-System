@@ -50,13 +50,18 @@ The frontend will be available at http://localhost:3000
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
+   OR
+   ```bash
+   conda create venv
+   conda activate
+   ```
 
-3. Install dependencies:
+4. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Start the server:
+5. Start the server:
    ```bash
    python main.py
    ```
