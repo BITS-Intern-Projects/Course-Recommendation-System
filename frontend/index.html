@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Course Recommender</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-lg">
+      <div class="max-w-6xl mx-auto px-4">
+        <div class="flex justify-between">
+          <div class="flex space-x-7">
+            <div class="flex items-center py-4">
+              <span class="font-semibold text-gray-500 text-lg">Course Recommender</span>
+            </div>
+            <div class="hidden md:flex items-center space-x-1">
+              <button onclick="showHome()" class="py-4 px-2 text-blue-500 border-b-4 border-blue-500 font-medium">Home</button>
+              <button onclick="showBookmarks()" class="py-4 px-2 text-gray-500 hover:text-blue-500 transition duration-300">Bookmarks</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 py-8">
+      <!-- Home Page -->
+      <div id="homePage">
+        <div class="space-y-6">
+          <form id="searchForm" class="space-y-4">
+            <div>
+              <label for="query" class="block text-sm font-medium text-gray-700">
+                What would you like to learn?
+              </label>
+              <input
+                type="text"
+                id="query"
+                placeholder="e.g., I want to learn data science"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
+              />
+            </div>
+            <button
+              type="submit"
+              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Find Courses
+            </button>
+          </form>
+
+          <div id="coursesList" class="space-y-4"></div>
+        </div>
+      </div>
+
+      <!-- Bookmarks Page -->
+      <div id="bookmarksPage" class="hidden">
+        <div class="space-y-6">
+          <h2 class="text-2xl font-bold text-gray-900">Your Bookmarked Courses</h2>
+          <div id="bookmarksList" class="space-y-4"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = 'http://localhost:8000';
+      let bookmarks = [];
+
+      // Navigation
+      function showHome() {
+        document.getElementById('homePage').classList.remove('hidden');
+        document.getElementById('bookmarksPage').classList.add('hidden');
+        document.querySelectorAll('nav button').forEach(btn => {
+          btn.classList.remove('text-blue-500', 'border-b-4', 'border-blue-500', 'font-medium');
+          btn.classList.add('text-gray-500');
+        });
+        document.querySelector('nav button').classList.add('text-blue-500', 'border-b-4', 'border-blue-500', 'font-medium');
+      }
+
+      function showBookmarks() {
+        document.getElementById('homePage').classList.add('hidden');
+        document.getElementById('bookmarksPage').classList.remove('hidden');
+        document.querySelectorAll('nav button').forEach(btn => {
+          btn.classList.remove('text-blue-500', 'border-b-4', 'border-blue-500', 'font-medium');
+          btn.classList.add('text-gray-500');
+        });
+        document.querySelectorAll('nav button')[1].classList.add('text-blue-500', 'border-b-4', 'border-blue-500', 'font-medium');
+        loadBookmarks();
+      }
+
+      // Search functionality
+      document.getElementById('searchForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const query = document.getElementById('query').value;
+        
+        try {
+          // Submit query
+          await axios.post(`${API_BASE}/submit-query`, { query });
+          
+          // Get recommendations
+          const response = await axios.get(`${API_BASE}/recommendations`);
+          displayCourses(response.data);
+        } catch (error) {
+          console.error('Error:', error);
+          alert('Error fetching recommendations. Make sure the backend is running.');
+        }
+      });
+
+      function displayCourses(courses) {
+        const coursesList = document.getElementById('coursesList');
+        coursesList.innerHTML = '';
+
+        courses.forEach(course => {
+          const courseDiv = document.createElement('div');
+          courseDiv.className = 'bg-white shadow rounded-lg p-6';
+          courseDiv.innerHTML = `
+            <h3 class="text-lg font-medium text-gray-900">${course.name}</h3>
+            <p class="mt-2 text-gray-600">${course.description}</p>
+            <div class="mt-4 flex space-x-4">
+              <button onclick="openCourse('${course.url}', '${course.id}')" class="text-blue-600 hover:text-blue-800">
+                View Course
+              </button>
+              <button onclick="bookmarkCourse(${JSON.stringify(course).replace(/"/g, '&quot;')})" class="text-gray-600 hover:text-gray-800">
+                Bookmark
+              </button>
+            </div>
+          `;
+          coursesList.appendChild(courseDiv);
+        });
+      }
+
+      async function openCourse(url, courseId) {
+        try {
+          await axios.post(`${API_BASE}/track-click`, { courseId });
+          window.open(url, '_blank');
+        } catch (error) {
+          console.error('Error tracking click:', error);
+          window.open(url, '_blank');
+        }
+      }
+
+      async function bookmarkCourse(course) {
+        try {
+          await axios.post(`${API_BASE}/bookmark`, course);
+          alert('Course bookmarked successfully!');
+        } catch (error) {
+          console.error('Error bookmarking course:', error);
+          alert('Error bookmarking course');
+        }
+      }
+
+      async function loadBookmarks() {
+        try {
+          const response = await axios.get(`${API_BASE}/bookmarks`);
+          bookmarks = response.data;
+          displayBookmarks();
+        } catch (error) {
+          console.error('Error loading bookmarks:', error);
+        }
+      }
+
+      function displayBookmarks() {
+        const bookmarksList = document.getElementById('bookmarksList');
+        bookmarksList.innerHTML = '';
+
+        if (bookmarks.length === 0) {
+          bookmarksList.innerHTML = '<p class="text-gray-600">No bookmarked courses yet.</p>';
+          return;
+        }
+
+        bookmarks.forEach(course => {
+          const courseDiv = document.createElement('div');
+          courseDiv.className = 'bg-white shadow rounded-lg p-6';
+          courseDiv.innerHTML = `
+            <h3 class="text-lg font-medium text-gray-900">${course.name}</h3>
+            <p class="mt-2 text-gray-600">${course.description}</p>
+            <div class="mt-4 flex space-x-4">
+              <button onclick="openCourse('${course.url}', '${course.id}')" class="text-blue-600 hover:text-blue-800">
+                View Course
+              </button>
+              <button onclick="removeBookmark('${course.id}')" class="text-red-600 hover:text-red-800">
+                Remove Bookmark
+              </button>
+            </div>
+          `;
+          bookmarksList.appendChild(courseDiv);
+        });
+      }
+
+      async function removeBookmark(courseId) {
+        try {
+          await axios.delete(`${API_BASE}/bookmark/${courseId}`);
+          bookmarks = bookmarks.filter(bookmark => bookmark.id !== courseId);
+          displayBookmarks();
+        } catch (error) {
+          console.error('Error removing bookmark:', error);
+        }
+      }
+
+      // Check if backend is running
+      async function checkBackend() {
+        try {
+          const response = await axios.get(`${API_BASE}/`);
+          console.log('Backend is running:', response.data);
+        } catch (error) {
+          console.error('Backend is not running. Please start the backend server first.');
+          alert('Backend is not running. Please start the backend server first.');
+        }
+      }
+
+      // Check backend on page load
+      checkBackend();
+    </script>
+  </body>
+</html> 
